@@ -17,34 +17,55 @@ import pathlib
 import sys
 import traceback
 
-import mss
-import pyautogui
-import numpy
-from PIL import Image
-import socketio
-from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
-from av import VideoFrame
-
-# ── Config ────────────────────────────────────────────────────────────────────
-SIGNAL_URL = "https://remoto-6lit.onrender.com"
-APP_NAME   = "RemoteDesktopHost"
-FPS        = 20
-pyautogui.FAILSAFE = False
-pyautogui.PAUSE    = 0
-
 # ── Log ───────────────────────────────────────────────────────────────────────
+APP_NAME = "RemoteDesktopHost"
 LOG_PATH = pathlib.Path.home() / "AppData" / "Local" / APP_NAME / "host.log"
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
     datefmt="%H:%M:%S",
     handlers=[logging.FileHandler(LOG_PATH, encoding="utf-8")],
 )
 log = logging.getLogger("host")
+logging.getLogger("socketio").setLevel(logging.DEBUG)
+logging.getLogger("engineio").setLevel(logging.DEBUG)
 logging.getLogger("aiortc").setLevel(logging.WARNING)
 logging.getLogger("aioice").setLevel(logging.WARNING)
+
+log.info("=== Iniciando host agent ===")
+
+# ── Config ────────────────────────────────────────────────────────────────────
+SIGNAL_URL = "https://remoto-6lit.onrender.com"
+FPS        = 20
+
+log.info(f"SIGNAL_URL: {SIGNAL_URL}")
+
+# ── Imports ───────────────────────────────────────────────────────────────────
+try:
+    log.info("Importando mss...")
+    import mss
+    log.info("Importando pyautogui...")
+    import pyautogui
+    log.info("Importando numpy...")
+    import numpy
+    log.info("Importando PIL...")
+    from PIL import Image
+    log.info("Importando socketio...")
+    import socketio
+    log.info("Importando aiortc...")
+    from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
+    log.info("Importando av...")
+    from av import VideoFrame
+    log.info("Todos los imports OK")
+except Exception as e:
+    log.error(f"Error en imports: {e}")
+    log.error(traceback.format_exc())
+    sys.exit(1)
+
+pyautogui.FAILSAFE = False
+pyautogui.PAUSE    = 0
 
 
 # ── Autostart ─────────────────────────────────────────────────────────────────
@@ -68,7 +89,6 @@ def register_autostart():
             current, _ = winreg.QueryValueEx(key, APP_NAME)
         except FileNotFoundError:
             current = None
-
         if current != exe_path:
             winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, exe_path)
             log.info(f"Autostart registrado: {exe_path}")
@@ -158,21 +178,24 @@ def _resolve_key(data):
 # ── Main ──────────────────────────────────────────────────────────────────────
 async def run():
     pc  = None
+    log.info("Creando AsyncClient...")
     sio = socketio.AsyncClient(
-        logger=True,
         reconnection=True,
         reconnection_attempts=10,
         reconnection_delay=3,
+        logger=True,
+        engineio_logger=True,
     )
-
-    # Redirigir logs de socketio al mismo archivo
-    sio_log = logging.getLogger("socketio")
-    sio_log.setLevel(logging.DEBUG)
+    log.info("AsyncClient creado OK")
 
     @sio.event
     async def connect():
-        log.info("Conectado al servidor.")
+        log.info("¡CONECTADO al servidor!")
         await sio.emit("host:register")
+
+    @sio.event
+    async def connect_error(data):
+        log.error(f"Error de conexión: {data}")
 
     @sio.event
     async def disconnect():
@@ -242,7 +265,7 @@ async def run():
         log.error(f"Error del servidor: {data.get('message')}")
 
     try:
-        log.info(f"Conectando a {SIGNAL_URL} …")
+        log.info(f"Intentando conectar a {SIGNAL_URL} ...")
         await sio.connect(
             SIGNAL_URL,
             transports=["polling", "websocket"],
@@ -255,7 +278,10 @@ async def run():
         log.error(traceback.format_exc())
     finally:
         if pc: await pc.close()
-        await sio.disconnect()
+        try:
+            await sio.disconnect()
+        except Exception:
+            pass
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
