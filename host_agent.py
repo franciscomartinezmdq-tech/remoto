@@ -25,7 +25,7 @@ from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
 from av import VideoFrame
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SIGNAL_URL = "https://TU-PROYECTO.up.railway.app"   # <-- reemplazar
+SIGNAL_URL = "https://remoto-6lit.onrender.com"   # <-- reemplazar
 APP_NAME   = "RemoteDesktopHost"
 FPS        = 20
 pyautogui.FAILSAFE = False
