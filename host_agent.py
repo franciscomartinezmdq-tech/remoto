@@ -249,7 +249,9 @@ async def run():
         await sio.connect(SIGNAL_URL, transports=["polling", "websocket"])
         await sio.wait()
     except Exception as e:
+        import traceback
         log.error(f"Conexión fallida: {e}")
+        log.error(traceback.format_exc())
     finally:
         if pc: await pc.close()
         await sio.disconnect()
