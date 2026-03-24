@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remote Desktop</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:      #0d0f14;
+      --surface: #161920;
+      --border:  #252830;
+      --accent:  #4f8ef7;
+      --text:    #e8eaf0;
+      --muted:   #5a5f72;
+      --error:   #f75e5e;
+      --success: #4fca7a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Connecting screen ─────────────────────────────────────── */
+    #connecting-screen {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 30% 40%, #1a1d2e 0%, var(--bg) 70%);
+    }
+
+    .connect-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px 40px;
+      width: 340px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+
+    .logo-icon {
+      width: 56px; height: 56px;
+      background: linear-gradient(135deg, var(--accent), #7c5cfa);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+    }
+
+    .connect-card h1 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .connect-card p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    #connect-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #7c5cfa);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.03em;
+    }
+
+    #connect-btn:hover  { opacity: 0.9; }
+    #connect-btn:active { transform: scale(0.98); }
+    #connect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #status-msg {
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+
+    .status-error   { color: var(--error)   !important; }
+    .status-info    { color: var(--accent)   !important; }
+    .status-waiting { color: var(--muted)    !important; }
+
+    /* ── Remote screen ─────────────────────────────────────────── */
+    #remote-screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      height: 40px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 14px; gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .toolbar-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    .toolbar-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .toolbar-spacer { flex: 1; }
+
+    #disconnect-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    #disconnect-btn:hover { color: var(--error); border-color: var(--error); }
+
+    .video-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      position: relative;
+      cursor: none;
+      overflow: hidden;
+    }
+
+    #remote-video {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      object-fit: contain;
+    }
+
+    #cursor-dot {
+      position: absolute;
+      width: 14px; height: 14px;
+      margin-left: -7px; margin-top: -7px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.85);
+      box-shadow: 0 0 4px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+
+    #loading-overlay {
+      position: absolute; inset: 0;
+      background: #000;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px;
+      color: var(--muted); font-size: 13px;
+    }
+
+    .spinner {
+      width: 32px; height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ── PANTALLA DE CONEXIÓN ──────────────────────────────────── -->
+<div id="connecting-screen">
+  <div class="connect-card">
+    <div class="logo-icon">🖥</div>
+    <h1>Remote Desktop</h1>
+    <p>Conectate a tu PC de forma remota.<br>El host debe estar corriendo.</p>
+    <button id="connect-btn">Conectar</button>
+    <div id="status-msg"></div>
+  </div>
+</div>
+
+<!-- ── PANTALLA REMOTA ───────────────────────────────────────── -->
+<div id="remote-screen">
+  <div class="toolbar">
+    <div class="toolbar-dot"></div>
+    <span class="toolbar-label">Conectado</span>
+    <div class="toolbar-spacer"></div>
+    <button id="disconnect-btn">Desconectar</button>
+  </div>
+  <div class="video-container" id="video-container">
+    <div id="loading-overlay">
+      <div class="spinner"></div>
+      <span>Iniciando stream…</span>
+    </div>
+    <video id="remote-video" autoplay playsinline></video>
+    <div id="cursor-dot"></div>
+  </div>
+</div>
+
+<script>
+const SIGNAL_URL = window.SIGNAL_URL || "https://TU-PROYECTO.up.railway.app";
+
+const ICE_SERVERS = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+];
+
+// ── DOM ─────────────────────────────────────────────────────────
+const connectingScreen = document.getElementById("connecting-screen");
+const remoteScreen     = document.getElementById("remote-screen");
+const connectBtn       = document.getElementById("connect-btn");
+const statusMsg        = document.getElementById("status-msg");
+const remoteVideo      = document.getElementById("remote-video");
+const loadingOverlay   = document.getElementById("loading-overlay");
+const cursorDot        = document.getElementById("cursor-dot");
+const videoContainer   = document.getElementById("video-container");
+const disconnectBtn    = document.getElementById("disconnect-btn");
+
+let socket, pc;
+
+// ── Status helper ───────────────────────────────────────────────
+function setStatus(msg, type = "info") {
+  statusMsg.textContent = msg;
+  statusMsg.className   = `status-${type}`;
+}
+
+// ── Cleanup ─────────────────────────────────────────────────────
+function cleanup() {
+  if (pc)     { pc.close(); pc = null; }
+  if (socket) { socket.disconnect(); socket = null; }
+  remoteVideo.srcObject = null;
+}
+
+function backToConnect(msg = "", type = "error") {
+  remoteScreen.style.display     = "none";
+  connectingScreen.style.display = "flex";
+  connectBtn.disabled = false;
+  if (msg) setStatus(msg, type);
+  cleanup();
+}
+
+// ── Connect ──────────────────────────────────────────────────────
+connectBtn.addEventListener("click", () => {
+  connectBtn.disabled = true;
+  setStatus("Conectando…", "info");
+
+  socket = io(SIGNAL_URL, { transports: ["websocket"] });
+
+  socket.on("connect", () => {
+    setStatus("Buscando host…", "info");
+    socket.emit("viewer:join");
+  });
+
+  socket.on("connect_error", () => {
+    backToConnect("No se pudo conectar al servidor.", "error");
+  });
+
+  // Host no disponible aún — esperar
+  socket.on("viewer:waiting", () => {
+    setStatus("Esperando que el host se conecte…", "waiting");
+  });
+
+  // Host disponible → arrancar WebRTC
+  socket.on("viewer:ready", () => {
+    connectingScreen.style.display = "none";
+    remoteScreen.style.display     = "flex";
+    initPeerConnection();
+  });
+
+  socket.on("signal:offer", async ({ offer }) => {
+    if (!pc) return;
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit("signal:answer", { answer });
+  });
+
+  socket.on("signal:ice", async ({ candidate }) => {
+    if (!pc || !candidate) return;
+    try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); }
+    catch (e) { console.warn("ICE:", e); }
+  });
+
+  socket.on("error", ({ message }) => {
+    backToConnect(message, "error");
+  });
+});
+
+// ── WebRTC ───────────────────────────────────────────────────────
+function initPeerConnection() {
+  pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) socket.emit("signal:ice", { candidate });
+  };
+
+  pc.ontrack = ({ track, streams }) => {
+    if (track.kind === "video" && streams[0]) {
+      remoteVideo.srcObject = streams[0];
+      remoteVideo.onloadedmetadata = () => {
+        loadingOverlay.style.display = "none";
+      };
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (["disconnected","failed","closed"].includes(pc.connectionState)) {
+      backToConnect("La conexión se interrumpió.", "error");
+    }
+  };
+}
+
+// ── Disconnect ───────────────────────────────────────────────────
+disconnectBtn.addEventListener("click", () => backToConnect("Desconectado.", "info"));
+
+// ── Input relay ──────────────────────────────────────────────────
+function getRect()  { return remoteVideo.getBoundingClientRect(); }
+
+function toHost(cx, cy) {
+  const r = getRect();
+  return {
+    x: Math.round((cx - r.left) * (remoteVideo.videoWidth  / r.width)),
+    y: Math.round((cy - r.top)  * (remoteVideo.videoHeight / r.height)),
+  };
+}
+
+function overVideo(cx, cy) {
+  const r = getRect();
+  return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
+}
+
+function send(data) { if (socket) socket.emit("input:event", data); }
+
+videoContainer.addEventListener("mousemove", (e) => {
+  const cr = videoContainer.getBoundingClientRect();
+  cursorDot.style.left = `${e.clientX - cr.left}px`;
+  cursorDot.style.top  = `${e.clientY - cr.top}px`;
+  if (!overVideo(e.clientX, e.clientY)) return;
+  const { x, y } = toHost(e.clientX, e.clientY);
+  send({ type: "mousemove", x, y });
+});
+
+videoContainer.addEventListener("mousedown", (e) => {
+  if (!overVideo(e.clientX, e.clientY)) return;
+  e.preventDefault();
+  send({ type: "mousedown", button: e.button, ...toHost(e.clientX, e.clientY) });
+});
+
+videoContainer.addEventListener("mouseup", (e) => {
+  if (!overVideo(e.clientX, e.clientY)) return;
+  e.preventDefault();
+  send({ type: "mouseup", button: e.button, ...toHost(e.clientX, e.clientY) });
+});
+
+videoContainer.addEventListener("click", (e) => {
+  if (!overVideo(e.clientX, e.clientY)) return;
+  e.preventDefault();
+  send({ type: "click", button: e.button, ...toHost(e.clientX, e.clientY) });
+});
+
+videoContainer.addEventListener("dblclick", (e) => {
+  if (!overVideo(e.clientX, e.clientY)) return;
+  e.preventDefault();
+  send({ type: "dblclick", ...toHost(e.clientX, e.clientY) });
+});
+
+videoContainer.addEventListener("contextmenu", (e) => {
+  if (!overVideo(e.clientX, e.clientY)) return;
+  e.preventDefault();
+  send({ type: "contextmenu", ...toHost(e.clientX, e.clientY) });
+});
+
+videoContainer.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  send({ type: "scroll", deltaX: e.deltaX, deltaY: e.deltaY });
+}, { passive: false });
+
+document.addEventListener("keydown", (e) => {
+  if (remoteScreen.style.display === "none") return;
+  if (e.key === "F12") return;
+  e.preventDefault();
+  send({ type:"keydown", key:e.key, code:e.code,
+         ctrlKey:e.ctrlKey, shiftKey:e.shiftKey, altKey:e.altKey, metaKey:e.metaKey });
+});
+
+document.addEventListener("keyup", (e) => {
+  if (remoteScreen.style.display === "none") return;
+  if (e.key === "F12") return;
+  e.preventDefault();
+  send({ type:"keyup", key:e.key, code:e.code,
+         ctrlKey:e.ctrlKey, shiftKey:e.shiftKey, altKey:e.altKey, metaKey:e.metaKey });
+});
+</script>
+</body>
+</html>
