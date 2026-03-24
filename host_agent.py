@@ -246,7 +246,7 @@ async def run():
         log.error(f"Error: {data.get('message')}")
 
     try:
-        await sio.connect(SIGNAL_URL, transports=["websocket"])
+        await sio.connect(SIGNAL_URL, transports=["polling", "websocket"])
         await sio.wait()
     except Exception as e:
         log.error(f"Conexión fallida: {e}")
