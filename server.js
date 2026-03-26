@@ -36,7 +36,8 @@ io.on("connection", (socket) => {
   console.log(`[conn] ${socket.id}`);
 
   // ── Host se registra con nombre y hash de contraseña ─────────────────────
-  socket.on("host:register", ({ name, passwordHash }) => {
+  socket.on("host:register", (data) => {
+    const { name, passwordHash } = data || {};
     if (!name || !passwordHash) return;
 
     // Si ya había un host con ese nombre, desconectarlo
@@ -48,9 +49,6 @@ io.on("connection", (socket) => {
     hosts.set(name, { socketId: socket.id, passwordHash, viewerSocketId: null });
     socketToHost.set(socket.id, name);
     console.log(`[host] "${name}" registrado: ${socket.id}`);
-
-    // Si hay un viewer esperando por este host, conectarlos
-    // (no aplica en este flujo pero por si acaso)
   });
 
   // ── Viewer pide lista de hosts disponibles ────────────────────────────────
