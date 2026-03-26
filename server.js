@@ -15,110 +15,163 @@ app.use(cors());
 app.use(express.json());
 
 // ── State ─────────────────────────────────────────────────────────────────────
-// Un solo host activo a la vez (uso personal)
-let hostSocketId   = null;
-let viewerSocketId = null;
+// hosts[name] = { socketId, passwordHash, viewerSocketId | null }
+const hosts = new Map();
+// socketId → hostName (reverse lookup)
+const socketToHost = new Map();
+// viewerSocketId → hostName
+const viewerToHost = new Map();
 
 // ── Health ────────────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
-  res.json({
-    status:    "ok",
-    host:      !!hostSocketId,
-    viewer:    !!viewerSocketId,
-    uptime:    Math.floor(process.uptime()),
-  });
+  const hostList = [];
+  for (const [name, h] of hosts.entries()) {
+    hostList.push({ name, connected: !!h.socketId, hasViewer: !!h.viewerSocketId });
+  }
+  res.json({ status: "ok", hosts: hostList, uptime: Math.floor(process.uptime()) });
 });
 
 // ── Sockets ───────────────────────────────────────────────────────────────────
 io.on("connection", (socket) => {
   console.log(`[conn] ${socket.id}`);
 
-  // ── Host se registra ────────────────────────────────────────────────────────
-  socket.on("host:register", () => {
-    hostSocketId = socket.id;
-    console.log(`[host] Registrado: ${socket.id}`);
+  // ── Host se registra con nombre y hash de contraseña ─────────────────────
+  socket.on("host:register", ({ name, passwordHash }) => {
+    if (!name || !passwordHash) return;
 
-    // Si ya hay viewer esperando, notificarle de inmediato
-    if (viewerSocketId) {
-      io.to(hostSocketId).emit("host:viewer-joined");
+    // Si ya había un host con ese nombre, desconectarlo
+    const existing = hosts.get(name);
+    if (existing && existing.socketId) {
+      socketToHost.delete(existing.socketId);
     }
+
+    hosts.set(name, { socketId: socket.id, passwordHash, viewerSocketId: null });
+    socketToHost.set(socket.id, name);
+    console.log(`[host] "${name}" registrado: ${socket.id}`);
+
+    // Si hay un viewer esperando por este host, conectarlos
+    // (no aplica en este flujo pero por si acaso)
   });
 
-  // ── Viewer se conecta (sin PIN) ─────────────────────────────────────────────
-  socket.on("viewer:join", () => {
-    if (viewerSocketId && viewerSocketId !== socket.id) {
-      return socket.emit("error", { message: "Ya hay una sesión activa." });
+  // ── Viewer pide lista de hosts disponibles ────────────────────────────────
+  socket.on("viewer:list", () => {
+    const list = [];
+    for (const [name, h] of hosts.entries()) {
+      list.push({ name, online: !!h.socketId, busy: !!h.viewerSocketId });
     }
-
-    viewerSocketId = socket.id;
-
-    if (!hostSocketId) {
-      // Host no conectado aún — le avisamos cuando llegue
-      socket.emit("viewer:waiting");
-      console.log(`[viewer] Esperando host…`);
-      return;
-    }
-
-    // Host disponible → arrancar
-    io.to(hostSocketId).emit("host:viewer-joined");
-    socket.emit("viewer:ready");
-    console.log(`[viewer] Conectado: ${socket.id}`);
+    socket.emit("viewer:hosts", list);
   });
 
-  // ── WebRTC signaling ─────────────────────────────────────────────────────────
+  // ── Viewer intenta conectar a un host con contraseña ──────────────────────
+  socket.on("viewer:join", ({ name, passwordHash }) => {
+    const host = hosts.get(name);
+
+    if (!host) {
+      return socket.emit("error", { message: `PC "${name}" no encontrada o no conectada.` });
+    }
+    if (!host.socketId) {
+      return socket.emit("error", { message: `PC "${name}" no está conectada.` });
+    }
+    if (host.passwordHash !== passwordHash) {
+      return socket.emit("error", { message: "Contraseña incorrecta." });
+    }
+    if (host.viewerSocketId) {
+      return socket.emit("error", { message: `PC "${name}" ya tiene una sesión activa.` });
+    }
+
+    host.viewerSocketId = socket.id;
+    viewerToHost.set(socket.id, name);
+
+    io.to(host.socketId).emit("host:viewer-joined");
+    socket.emit("viewer:ready", { name });
+    console.log(`[viewer] Conectado a "${name}": ${socket.id}`);
+  });
+
+  // ── WebRTC signaling ──────────────────────────────────────────────────────
   socket.on("signal:offer", ({ offer }) => {
-    if (viewerSocketId) io.to(viewerSocketId).emit("signal:offer", { offer });
+    const name = socketToHost.get(socket.id);
+    const host = hosts.get(name);
+    if (host?.viewerSocketId) io.to(host.viewerSocketId).emit("signal:offer", { offer });
   });
 
   socket.on("signal:answer", ({ answer }) => {
-    if (hostSocketId) io.to(hostSocketId).emit("signal:answer", { answer });
+    const name = viewerToHost.get(socket.id);
+    const host = hosts.get(name);
+    if (host?.socketId) io.to(host.socketId).emit("signal:answer", { answer });
   });
 
   socket.on("signal:ice", ({ candidate }) => {
-    const isHost = socket.id === hostSocketId;
-    const target = isHost ? viewerSocketId : hostSocketId;
-    if (target) io.to(target).emit("signal:ice", { candidate });
+    const isHost = socketToHost.has(socket.id);
+    if (isHost) {
+      const host = hosts.get(socketToHost.get(socket.id));
+      if (host?.viewerSocketId) io.to(host.viewerSocketId).emit("signal:ice", { candidate });
+    } else {
+      const name = viewerToHost.get(socket.id);
+      const host = hosts.get(name);
+      if (host?.socketId) io.to(host.socketId).emit("signal:ice", { candidate });
+    }
   });
 
-  // ── Input (viewer → host) ────────────────────────────────────────────────────
+  // ── Input (viewer → host) ─────────────────────────────────────────────────
   socket.on("input:event", (data) => {
-    if (socket.id === viewerSocketId && hostSocketId) {
-      io.to(hostSocketId).emit("input:event", data);
-    }
+    const name = viewerToHost.get(socket.id);
+    const host = hosts.get(name);
+    if (host?.socketId) io.to(host.socketId).emit("input:event", data);
   });
 
-
-  // ── Keylogger (viewer → host: comandos, host → viewer: teclas) ──────────────
+  // ── Keylogger ─────────────────────────────────────────────────────────────
   socket.on("keylog:start", () => {
-    if (socket.id === viewerSocketId && hostSocketId) {
-      io.to(hostSocketId).emit("keylog:start");
-    }
+    const name = viewerToHost.get(socket.id);
+    const host = hosts.get(name);
+    if (host?.socketId) io.to(host.socketId).emit("keylog:start");
   });
 
   socket.on("keylog:stop", () => {
-    if (socket.id === viewerSocketId && hostSocketId) {
-      io.to(hostSocketId).emit("keylog:stop");
-    }
+    const name = viewerToHost.get(socket.id);
+    const host = hosts.get(name);
+    if (host?.socketId) io.to(host.socketId).emit("keylog:stop");
+  });
+
+  socket.on("keylog:ocr_toggle", ({ enabled }) => {
+    const name = viewerToHost.get(socket.id);
+    const host = hosts.get(name);
+    if (host?.socketId) io.to(host.socketId).emit("keylog:ocr_toggle", { enabled });
   });
 
   socket.on("keylog:key", (data) => {
-    if (socket.id === hostSocketId && viewerSocketId) {
-      io.to(viewerSocketId).emit("keylog:key", data);
-    }
+    const name = socketToHost.get(socket.id);
+    const host = hosts.get(name);
+    if (host?.viewerSocketId) io.to(host.viewerSocketId).emit("keylog:key", data);
   });
 
-  // ── Disconnect ───────────────────────────────────────────────────────────────
+  // ── Disconnect ────────────────────────────────────────────────────────────
   socket.on("disconnect", () => {
-    if (socket.id === hostSocketId) {
-      hostSocketId = null;
-      if (viewerSocketId) {
-        io.to(viewerSocketId).emit("error", { message: "El host se desconectó." });
+    // Era un host
+    if (socketToHost.has(socket.id)) {
+      const name = socketToHost.get(socket.id);
+      const host = hosts.get(name);
+      if (host) {
+        if (host.viewerSocketId) {
+          io.to(host.viewerSocketId).emit("error", { message: `PC "${name}" se desconectó.` });
+          viewerToHost.delete(host.viewerSocketId);
+        }
+        host.socketId      = null;
+        host.viewerSocketId = null;
       }
-      console.log("[host] Desconectado.");
-    } else if (socket.id === viewerSocketId) {
-      viewerSocketId = null;
-      if (hostSocketId) io.to(hostSocketId).emit("host:viewer-left");
-      console.log("[viewer] Desconectado.");
+      socketToHost.delete(socket.id);
+      console.log(`[host] "${name}" desconectado.`);
+    }
+
+    // Era un viewer
+    if (viewerToHost.has(socket.id)) {
+      const name = viewerToHost.get(socket.id);
+      const host = hosts.get(name);
+      if (host) {
+        host.viewerSocketId = null;
+        if (host.socketId) io.to(host.socketId).emit("host:viewer-left");
+      }
+      viewerToHost.delete(socket.id);
+      console.log(`[viewer] Desconectado de "${name}".`);
     }
   });
 });
