@@ -9,8 +9,10 @@ const PORT   = process.env.PORT || 3000;
 
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ["polling", "websocket"],
 });
-
 app.use(cors());
 app.use(express.json());
 
